@@ -20,3 +20,5 @@ Auth::routes();
 Route::get('/home', 'HomeController@index')->name('home');
 
 Route::get('/optimize', 'OptimizeController@index')->name('home');
+
+Route::post('/api/optimize', 'ApiController@index')->name('api');

@@ -130,7 +130,24 @@
         $(document).on('click', '.build-route', function (e) {
             e.preventDefault();
 
-            initializeMap();
+            var waypts = [];
+
+            $.each(nodes, function(k, v) {
+                waypts.push({
+                    lat: v.lat(),
+                    lng: v.lng()
+                });
+            });
+
+            $.ajax({
+                url: '/api/optimize',
+                method: 'POST',
+                contentType: "json",
+                data: JSON.stringify(waypts)
+            }).done(function(data) {
+                $('#route-description').empty();
+               initializeMap(data);
+            });
 
             $(this).remove();
         });
@@ -146,10 +163,11 @@
             // fields in the form.
         }
 
-        function initializeMap() {
+        function initializeMap(data) {
             // Map options
+            console.log(data.cities[0]);
             var opts = {
-                center: {lat: nodes[Object.keys(nodes)[0]].lat(), lng: nodes[Object.keys(nodes)[0]].lng()},
+                center: data.cities[0],
                 zoom: 6,
                 mapTypeControl: false
             };
@@ -158,14 +176,9 @@
 
             var waypts = [];
 
-            $.each(nodes, function(k, v) {
-                var marker = new google.maps.Marker({
-                    position: {lat: v.lat(), lng: v.lng()},
-                    map: map
-                });
-
+            $.each(data.cities, function(k, v) {
                 waypts.push({
-                    location: {lat: v.lat(), lng: v.lng()},
+                    location: data.cities[k],
                     stopover: true
                 });
             });
@@ -178,20 +191,21 @@
             });
 
             directionsDisplay.addListener('directions_changed', function() {
-                computeTotalDistance(directionsDisplay.getDirections());
+                computeTotalDistance(data.distance, directionsDisplay.getDirections());
             });
 
             // Add final route to map
             var request = {
-                origin: {lat: nodes[Object.keys(nodes)[0]].lat(), lng: nodes[Object.keys(nodes)[0]].lng()},
-                destination: {lat: nodes[Object.keys(nodes)[0]].lat(), lng: nodes[Object.keys(nodes)[0]].lng()},
+                origin: data.cities[0],
+                destination: data.cities[0],
                 waypoints: waypts,
                 travelMode: 'DRIVING',
                 avoidHighways: false,
                 provideRouteAlternatives: false,
-                optimizeWaypoints: true,
                 avoidTolls: false
             };
+
+            console.log(request);
 
             directionsService.route(request, function (response, status) {
                 if (status == google.maps.DirectionsStatus.OK) {
@@ -201,14 +215,16 @@
             });
         };
 
-        function computeTotalDistance(result) {
+        function computeTotalDistance(myTotal, googleTotal) {
+            myTotal = (parseFloat(myTotal) / 1000).toFixed(2);
+
             var total = 0;
-            var myroute = result.routes[0];
+            var myroute = googleTotal.routes[0];
             for (var i = 0; i < myroute.legs.length; i++) {
                 total += myroute.legs[i].distance.value;
             }
             total = total / 1000;
-            document.getElementById('total').innerHTML = total + ' km';
+            document.getElementById('total').innerHTML = myTotal + ' km | ' + total + ' km';
         }
 
         google.maps.event.addDomListener(window, 'load', initAutocomplete);
