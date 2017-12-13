@@ -7,19 +7,29 @@
                 <div class="panel panel-default">
                     <div class="panel-heading">Routes</div>
                     <div class="panel-body">
-                        <div class="row"></div>
-                        <div class="col-md-5">
-                            <label for="locationTextField">Location</label>
-                            <input id="locationTextField" type="text" size="50">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="locationTextField">Location</label>
+                                <input id="locationTextField" type="text" size="50">
+                            </div>
+                            <div class="col-md-4 build" style="margin-top: 20px;">
+                                <a href="" class="btn btn-success add_to_route">Add to city to route</a>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="locationTextField">Average time for load and unload, minutes</label>
+                                <input id="unloadtime" type="number" size="50">
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <a href="" class="btn btn-success add_to_route">Add to city to route</a>
-                        </div>
-                        <div class="col-md-2 build">
-
-                        </div>
-                        <div class="col-md-3">
-                            <span>Total Distance: </span><span id="total"></span>
+                        <div class="row" style="margin-top: 50px">
+                            <div class="col-md-3">
+                                <div><span>Total Distance: </span><span id="totalDistance"></span></div>
+                            </div>
+                            <div class="col-md-5">
+                                <div><span>Total Time: </span><span id="totalTime"></span></div>
+                                <div><span>Driving Time: </span><span id="drivingTime"></span></div>
+                                <div><span>Unload Time: </span><span id="unloadTime"></span></div>
+                                <div><span>Stops Time: </span><span id="stopsTime"></span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -165,7 +175,6 @@
 
         function initializeMap(data) {
             // Map options
-            console.log(data.cities[0]);
             var opts = {
                 center: data.cities[0],
                 zoom: 6,
@@ -190,9 +199,9 @@
                 panel: document.getElementById('route-description')
             });
 
-            directionsDisplay.addListener('directions_changed', function() {
-                computeTotalDistance(data.distance, directionsDisplay.getDirections());
-            });
+            computeTotalDistance(data.distance);
+
+            computeTime(data.time, data.cities);
 
             // Add final route to map
             var request = {
@@ -215,19 +224,63 @@
             });
         };
 
-        function computeTotalDistance(myTotal, googleTotal) {
+        function computeTotalDistance(myTotal) {
             myTotal = (parseFloat(myTotal) / 1000).toFixed(2);
 
-            var total = 0;
-            var myroute = googleTotal.routes[0];
-            for (var i = 0; i < myroute.legs.length; i++) {
-                total += myroute.legs[i].distance.value;
+            document.getElementById('totalDistance').innerHTML = myTotal + ' km';
+        }
+
+        function computeTime(time, cities) {
+            var drivingTime = time;
+            var stops = 0;
+
+            var timeForUnload = 0;
+
+            for(var i = 1; i < cities.length; ++i) {
+                timeForUnload += $('#unloadtime').val() * 60 || 0;
             }
-            total = total / 1000;
-            document.getElementById('total').innerHTML = myTotal + ' km | ' + total + ' km';
+
+            if(drivingTime < 9000) {
+                stops += 1200;
+            } else if(drivingTime < 16200) {
+                stops += 2700;
+            } else if(drivingTime > 16200 || drivingTime <= 32400) {
+                stops += 2*2700;
+            } else if(drivingTime > 32400){
+                stops += 2*2700 + 324000;
+            }
+
+            console.log(drivingTime, stops, timeForUnload);
+
+            document.getElementById('drivingTime').innerHTML = seconds2time(drivingTime);
+            document.getElementById('stopsTime').innerHTML = seconds2time(stops);
+            document.getElementById('unloadTime').innerHTML = seconds2time(timeForUnload);
+            document.getElementById('totalTime').innerHTML = seconds2time(drivingTime + stops + timeForUnload);
         }
 
         google.maps.event.addDomListener(window, 'load', initAutocomplete);
+
+        function seconds2time (seconds) {
+            var hours   = Math.floor(seconds / 3600);
+            var minutes = Math.floor((seconds - (hours * 3600)) / 60);
+            var seconds = seconds - (hours * 3600) - (minutes * 60);
+            var time = "";
+
+            if (hours != 0) {
+                time = hours+":";
+            }
+            if (minutes != 0 || time !== "") {
+                minutes = (minutes < 10 && time !== "") ? "0"+minutes : String(minutes);
+                time += minutes+":";
+            }
+            if (time === "") {
+                time = seconds+"s";
+            }
+            else {
+                time += (seconds < 10) ? "0"+seconds : String(seconds);
+            }
+            return time;
+        }
     });
 
 
